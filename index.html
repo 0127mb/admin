@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin Panel</title> <link rel="stylesheet" href="style.css">
+
+
+
+</head>
+<body>
+
+<h1>Admin Panel</h1>
+
+<div class="controls">
+  <select id="sortSelect">
+    <option value="default">Tabtilash</option>
+    <option value="az">A-Z</option>
+    <option value="za">Z-A</option>
+  </select>
+  <button id="historyBtn">History</button>
+</div>
+
+<div id="cardsContainer"></div>
+
+<script>
+const API_URL = "https://6907679fb1879c890ed9ace8.mockapi.io/user/api/usersapi";
+const cardsContainer = document.getElementById('cardsContainer');
+const sortSelect = document.getElementById('sortSelect');
+const historyBtn = document.getElementById('historyBtn');
+
+let allData = [];
+let showHistory = false;
+
+// fetch data
+async function fetchData() {
+  try {
+    const res = await fetch(API_URL);
+    const data = await res.json();
+    allData = data;
+    renderCards();
+  } catch (err) {
+    console.error("Xatolik:", err);
+  }
+}
+
+// filter bugungi ma'lumotlar
+function getTodayData() {
+  const today = new Date().toISOString().split('T')[0];
+  // createdAt mavjud bo'lsa, bugungi ma'lumotlarni filter qiladi
+  return allData.filter(item => item.createdAt && item.createdAt.startsWith(today));
+}
+
+// render cards
+function renderCards() {
+  cardsContainer.innerHTML = "";
+  const dataToShow = showHistory ? allData : getTodayData();
+
+  // sort
+  const sortValue = sortSelect.value;
+  if(sortValue === "az") dataToShow.sort((a,b) => a.ism.localeCompare(b.ism));
+  if(sortValue === "za") dataToShow.sort((a,b) => b.ism.localeCompare(a.ism));
+
+  dataToShow.forEach(item => {
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.innerHTML = `
+      <h3>${item.ism} ${item.familiya}</h3>
+      <p><b>Viloyat:</b> ${item.viloyat || '-'}</p>
+      <p><b>Telefon:</b> ${item.telefon || '-'}</p>
+      <p><b>ID:</b> ${item.id}</p>
+      <button class="delete-btn">❌</button>
+    `;
+    const deleteBtn = card.querySelector('.delete-btn');
+    deleteBtn.addEventListener('click', () => deleteItem(item.id));
+    cardsContainer.appendChild(card);
+  });
+}
+
+// delete function
+function deleteItem(id) {
+  const confirmDelete = confirm("Siz haqqatanham ochirmoqchimisiz? Agar ochirsangiz bu malumot boshqa tiklanmaydi!");
+  if(confirmDelete){
+    fetch(`${API_URL}/${id}`, { method: 'DELETE' })
+      .then(res => res.json())
+      .then(() => {
+        allData = allData.filter(item => item.id != id);
+        renderCards();
+      });
+  }
+}
+
+// sort change
+sortSelect.addEventListener('change', renderCards);
+
+// history toggle
+historyBtn.addEventListener('click', () => {
+  showHistory = !showHistory;
+  historyBtn.textContent = showHistory ? "Today" : "History";
+  renderCards();
+});
+
+fetchData();
+
+</script>
+
+</body>
+</html>
